@@ -12,7 +12,7 @@ const apiTokenInput = document.getElementById('api-token');
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
-    // Load the TSV file (Papa Parse 활성화)
+    // Load the TSV file
     loadReviews();
     
     // Set up event listeners
@@ -83,8 +83,8 @@ function analyzeRandomReview() {
     // Show loading state
     loadingElement.style.display = 'block';
     analyzeBtn.disabled = true;
-    sentimentResult.innerHTML = '';  // Reset previous result
-    sentimentResult.className = 'sentiment-result';  // Reset classes
+    sentimentResult.innerHTML = '';
+    sentimentResult.className = 'sentiment-result';
     
     // Call Hugging Face API
     analyzeSentiment(selectedReview)
@@ -101,40 +101,42 @@ function analyzeRandomReview() {
 
 // Call Hugging Face API for sentiment analysis
 async function analyzeSentiment(text) {
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    
+    if (apiToken) {
+        headers['Authorization'] = `Bearer ${apiToken}`;
+    }
+    
     const response = await fetch(
         'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english',
         {
-            headers: { 
-                Authorization: apiToken ? `Bearer ${apiToken}` : undefined,
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             method: 'POST',
-            body: JSON.stringify({ inputs: text }),
+            body: JSON.stringify({ inputs: text })
         }
     );
     
     if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API error: ${response.status} ${response.statusText}`);
     }
     
-    const result = await response.json();
-    return result;
+    return await response.json();
 }
 
 // Display sentiment result
 function displaySentiment(result) {
-    // Default to neutral if we can't parse the result
     let sentiment = 'neutral';
     let score = 0.5;
     let label = 'NEUTRAL';
     
-    // Parse the API response (format: [[{label: 'POSITIVE', score: 0.99}]])
     if (Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) && result[0].length > 0) {
         const sentimentData = result[0][0];
         label = sentimentData.label?.toUpperCase() || 'NEUTRAL';
         score = sentimentData.score ?? 0.5;
         
-        // Determine sentiment
         if (label === 'POSITIVE' && score > 0.5) {
             sentiment = 'positive';
         } else if (label === 'NEGATIVE' && score > 0.5) {
@@ -142,7 +144,6 @@ function displaySentiment(result) {
         }
     }
     
-    // Update UI
     sentimentResult.classList.add(sentiment);
     sentimentResult.innerHTML = `
         <i class="fas ${getSentimentIcon(sentiment)} icon"></i>

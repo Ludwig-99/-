@@ -10,6 +10,20 @@ const loadingElement = document.querySelector('.loading');
 const errorElement = document.getElementById('error-message');
 const apiTokenInput = document.getElementById('api-token');
 
+// Sample reviews data to use when TSV file is not available
+const sampleReviews = [
+    "This product is absolutely amazing! It exceeded all my expectations and works perfectly.",
+    "I'm very disappointed with this purchase. The quality is poor and it broke after just one use.",
+    "The item is okay for the price, but nothing special. It does what it's supposed to do.",
+    "Outstanding quality and fantastic customer service. I would definitely recommend this to others!",
+    "Terrible experience. The product arrived damaged and the company refused to provide a refund.",
+    "It's a decent product that gets the job done. Not the best, but certainly not the worst either.",
+    "I love this product! It has completely changed how I approach my daily tasks. Highly recommended!",
+    "Poor quality materials and bad craftsmanship. I regret spending money on this item.",
+    "The product works as described. It's a good value for the money I paid.",
+    "Exceptional quality and attention to detail. This is exactly what I was looking for!"
+];
+
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
     // Load the TSV file
@@ -39,21 +53,31 @@ function loadReviews() {
                 header: true,
                 delimiter: '\t',
                 complete: (results) => {
-                    reviews = results.data
-                        .map(row => row.text)
-                        .filter(text => text && text.trim() !== '');
-                    console.log('Loaded', reviews.length, 'reviews');
+                    if (results.data && results.data.length > 0) {
+                        reviews = results.data
+                            .map(row => row.text)
+                            .filter(text => text && text.trim() !== '');
+                        console.log('Loaded', reviews.length, 'reviews from TSV file');
+                    } else {
+                        throw new Error('TSV file is empty or invalid');
+                    }
                 },
                 error: (error) => {
                     console.error('TSV parse error:', error);
-                    showError('Failed to parse TSV file: ' + error.message);
+                    useSampleReviews();
                 }
             });
         })
         .catch(error => {
             console.error('TSV load error:', error);
-            showError('Failed to load TSV file: ' + error.message);
+            useSampleReviews();
         });
+}
+
+// Use sample reviews when TSV file is not available
+function useSampleReviews() {
+    reviews = sampleReviews;
+    console.log('Using sample reviews:', reviews.length, 'reviews available');
 }
 
 // Save API token to localStorage

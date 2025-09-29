@@ -25,6 +25,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .error { display: none; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0; }
         .icon { font-size: 2em; margin-bottom: 10px; }
+        .info { background: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 5px; margin: 10px 0; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -34,6 +35,9 @@
         <div class="api-section">
             <h3>Hugging Face API Token</h3>
             <input type="text" id="api-token" value="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" placeholder="Enter your API token">
+            <div class="info">
+                <strong>Fixed API Issues:</strong> Using reliable models with fallback local analysis when API fails.
+            </div>
         </div>
 
         <div class="buttons">

@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review Analyzer</title>
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Papa Parse for TSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
@@ -18,7 +16,6 @@
         .buttons { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
         button { padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; background: #007bff; color: white; flex: 1; min-width: 150px; }
         button:hover { background: #0056b3; }
-        /* Added disabled state for better UX during API calls */
         button:disabled { background: #6c757d; cursor: not-allowed; }
         .review-card { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
         .results { display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
@@ -35,34 +32,28 @@
         <h1>Review Analyzer</h1>
         
         <div class="api-section">
-            <h3>Hugging Face API Token (Optional)</h3>
-            <!-- API token input for authenticated requests (higher rate limits) -->
-            <input type="text" id="api-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+            <h3>Hugging Face API Token</h3>
+            <input type="text" id="api-token" value="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" placeholder="Enter your API token">
         </div>
 
         <div class="buttons">
-            <!-- Three main functionality buttons -->
             <button id="select-review">Select Random Review</button>
             <button id="analyze-sentiment">Analyze Sentiment</button>
             <button id="count-nouns">Count Nouns</button>
         </div>
 
-        <!-- Loading indicator for API calls -->
         <div class="loading">
             <div class="spinner"></div>
             <p>Processing...</p>
         </div>
 
-        <!-- Error display area -->
         <div class="error" id="error-message"></div>
 
-        <!-- Display area for selected review -->
         <div class="review-card">
             <h3>Selected Review</h3>
             <p id="review-text">No review selected yet</p>
         </div>
 
-        <!-- Results display area for both sentiment and noun analysis -->
         <div class="results">
             <div class="result-card">
                 <h3>Sentiment</h3>

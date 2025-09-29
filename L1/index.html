@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Sentiment Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #d4af37;
+            min-height: 100vh;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            background: rgba(10, 10, 35, 0.9);
+            border-radius: 0;
+            border: 3px solid #d4af37;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            width: 90%;
+            max-width: 900px;
+            padding: 40px;
+            margin: 30px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #d4af37, #ffd700, #d4af37);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #ffd700;
+            margin-bottom: 30px;
+            font-size: 3rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 20px;
+        }
+        
+        .description {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #c0c0c0;
+            line-height: 1.6;
+            font-size: 1.2rem;
+            font-style: italic;
+        }
+        
+        .api-section {
+            margin-bottom: 35px;
+            padding: 30px;
+            background: rgba(20, 20, 50, 0.8);
+            border: 2px solid #d4af37;
+            position: relative;
+        }
+        
+        .api-section::after {
+            content: '✦';
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            font-size: 24px;
+            color: #d4af37;
+            background: #0f0c29;
+            padding: 5px;
+            border: 2px solid #d4af37;
+        }
+        
+        .api-section h2 {
+            margin-bottom: 20px;
+            color: #ffd700;
+            font-size: 1.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .api-input {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        input[type="text"] {
+            padding: 18px 25px;
+            border: 2px solid #d4af37;
+            border-radius: 0;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-family: 'Courier New', monospace;
+        }
+        
+        input[type="text"]:focus {
+            border-color: #ffd700;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        input[type="text"]::placeholder {
+            color: #888;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #d4af37 0%, #ffd700 100%);
+            color: #0f0c29;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 2px solid #ffd700;
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(212, 175, 55, 0.6);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .review-section {
+            margin-bottom: 35px;
+        }
+        
+        .review-card {
+            background: rgba(20, 20, 50, 0.8);
+            border: 2px solid #d4af37;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .review-card::before {
+            content: '❖';
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            font-size: 24px;
+            color: #d4af37;
+            background: #0f0c29;
+            padding: 5px;
+            border: 2px solid #d4af37;
+        }
+        
+        .review-text {
+            line-height: 1.8;
+            margin-bottom: 25px;
+            font-size: 18px;
+            color: #e0e0e0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            border-left: 4px solid #d4af37;
+            font-style: italic;
+        }
+        
+        .sentiment-result {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px;
+            padding: 30px;
+            border: 3px solid #d4af37;
+            margin-top: 30px;
+            background: rgba(20, 20, 50, 0.8);
+            font-weight: bold;
+            font-size: 22px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .positive {
+            color: #00ff00;
+            border-color: #00ff00;
+            background: linear-gradient(135deg, rgba(0, 255, 0, 0.1) 0%, rgba(20, 20, 50, 0.8) 100%);
+        }
+        
+        .negative {
+            color: #ff4444;
+            border-color: #ff4444;
+            background: linear-gradient(135deg, rgba(255, 68, 68, 0.1) 0%, rgba(20, 20, 50, 0.8) 100%);
+        }
+        
+        .neutral {
+            color: #ffd700;
+            border-color: #ffd700;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(20, 20, 50, 0.8) 100%);
+        }
+        
+        .icon {
+            font-size: 32px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(212, 175, 55, 0.3);
+            border-left: 4px solid #d4af37;
+            border-radius: 0;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: #ff4444;
+            padding: 20px;
+            border: 2px solid #ff4444;
+            margin: 20px 0;
+            display: none;
+            font-weight: bold;
+            background: rgba(255, 68, 68, 0.1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .instructions {
+            margin-top: 40px;
+            padding: 30px;
+            background: rgba(20, 20, 50, 0.8);
+            border: 2px solid #d4af37;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 20px;
+            color: #ffd700;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .instructions ol {
+            padding-left: 30px;
+        }
+        
+        .instructions li {
+            margin-bottom: 15px;
+            color: #c0c0c0;
+        }
+        
+        .instructions a {
+            color: #d4af37;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .instructions a:hover {
+            text-decoration: underline;
+            color: #ffd700;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #d4af37;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                width: 95%;
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            button {
+                width: 100%;
+            }
+            
+            .api-section, .review-card, .instructions {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Review Sentiment Analyzer</h1>
+        <p class="description">Analyze the sentiment of product reviews using Hugging Face's AI model</p>
+        
+        <div class="api-section">
+            <h2>Hugging Face API Setup</h2>
+            <div class="api-input">
+                <label for="api-token">Enter your Hugging Face API Token:</label>
+                <input type="text" id="api-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                <p><small>Your token is stored only in your browser and is never sent to our servers.</small></p>
+            </div>
+        </div>
+        
+        <div class="review-section">
+            <button id="analyze-btn">Analyze Random Review</button>
+            
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Analyzing sentiment...</p>
+            </div>
+            
+            <div class="error" id="error-message"></div>
+            
+            <div class="review-card">
+                <h3>Selected Review:</h3>
+                <p class="review-text" id="review-text">Click the button above to analyze a random review</p>
+            </div>
+            
+            <div class="sentiment-result" id="sentiment-result">
+                <i class="fas fa-question-circle icon"></i>
+                <span>Sentiment will appear here</span>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>How to get a Hugging Face API Token:</h3>
+            <ol>
+                <li>Go to <a href="https://huggingface.co/" target="_blank">huggingface.co</a> and create a free account</li>
+                <li>Navigate to your profile settings and access tokens section</li>
+                <li>Generate a new token with read permissions</li>
+                <li>Copy the token and paste it in the field above</li>
+            </ol>
+        </div>
+    </div>
+    
+    <footer>
+        <p>This app uses the siebert/sentiment-roberta-large-english model from Hugging Face</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

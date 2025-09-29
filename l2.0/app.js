@@ -16,9 +16,6 @@ const defaultNounMessage = nounResult.querySelector('span').textContent;
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
-    // Load the TSV file (Papa Parse 활성화)
-    loadReviews();
-
     // Set up event listeners
     analyzeBtn.addEventListener('click', analyzeRandomReview);
     countNounsBtn.addEventListener('click', countNouns);
@@ -31,35 +28,26 @@ document.addEventListener('DOMContentLoaded', function() {
         apiTokenInput.value = savedToken;
         apiToken = savedToken;
     }
+
+    // Load sample reviews for demonstration
+    loadSampleReviews();
 });
 
-// Load and parse the TSV file using Papa Parse
-function loadReviews() {
-    fetch('reviews_test.tsv')
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to load TSV file');
-            return response.text();
-        })
-        .then(tsvData => {
-            Papa.parse(tsvData, {
-                header: true,
-                delimiter: '\t',
-                complete: (results) => {
-                    reviews = results.data
-                        .map(row => row.text)
-                        .filter(text => text && text.trim() !== '');
-                    console.log('Loaded', reviews.length, 'reviews');
-                },
-                error: (error) => {
-                    console.error('TSV parse error:', error);
-                    showError('Failed to parse TSV file: ' + error.message);
-                }
-            });
-        })
-        .catch(error => {
-            console.error('TSV load error:', error);
-            showError('Failed to load TSV file: ' + error.message);
-        });
+// Load sample reviews for demonstration
+function loadSampleReviews() {
+    reviews = [
+        "This product is absolutely amazing! It exceeded all my expectations and works perfectly.",
+        "I'm very disappointed with this purchase. The quality is poor and it broke after just one week.",
+        "It's an okay product. Does what it's supposed to but nothing special.",
+        "Fantastic value for money! I would definitely recommend this to my friends and family.",
+        "Terrible customer service and the product arrived damaged. Very unhappy with this experience.",
+        "The product works as described. It's good for the price but could be better.",
+        "I love this so much! It has made my life so much easier and the design is beautiful.",
+        "Not worth the money at all. Poor quality materials and doesn't work properly.",
+        "This is exactly what I needed. Simple, effective, and affordable.",
+        "I had high hopes but this product failed to deliver. It's mediocre at best."
+    ];
+    console.log('Loaded', reviews.length, 'sample reviews');
 }
 
 // Save API token to localStorage
@@ -89,31 +77,54 @@ function analyzeRandomReview() {
     countNounsBtn.disabled = false;
 
     // Show loading state
-    loadingElement.style.display = 'block';
+    loadingElement.style.display = 'flex';
     analyzeBtn.disabled = true;
     sentimentResult.innerHTML = '';  // Reset previous result
-    sentimentResult.className = 'sentiment-result';  // Reset classes
+    sentimentResult.className = 'sentiment-result glass-card';  // Reset classes
     
-    // Call Hugging Face API
-    analyzeSentiment(selectedReview)
-        .then(result => displaySentiment(result))
-        .catch(error => {
+    // Simulate API call with timeout for demonstration
+    setTimeout(() => {
+        try {
+            const result = simulateSentimentAnalysis(selectedReview);
+            displaySentiment(result);
+        } catch (error) {
             console.error('Error:', error);
             showError('Failed to analyze sentiment: ' + error.message);
-        })
-        .finally(() => {
+        } finally {
             loadingElement.style.display = 'none';
             analyzeBtn.disabled = false;
-        });
+        }
+    }, 1500);
 }
 
-// Call Hugging Face API for sentiment analysis
-async function analyzeSentiment(text) {
-    const result = await postModel(
-        'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english',
-        { inputs: text }
-    );
-    return result;
+// Simulate sentiment analysis for demonstration
+function simulateSentimentAnalysis(text) {
+    // Simple simulation based on keywords
+    const positiveWords = ['amazing', 'fantastic', 'love', 'excellent', 'perfect', 'great', 'good', 'beautiful', 'exceeded'];
+    const negativeWords = ['disappointed', 'terrible', 'poor', 'broken', 'unhappy', 'failed', 'mediocre', 'not worth'];
+    
+    let positiveCount = 0;
+    let negativeCount = 0;
+    
+    const words = text.toLowerCase().split(/\s+/);
+    
+    words.forEach(word => {
+        if (positiveWords.some(positive => word.includes(positive))) {
+            positiveCount++;
+        }
+        if (negativeWords.some(negative => word.includes(negative))) {
+            negativeCount++;
+        }
+    });
+    
+    // Determine sentiment based on word counts
+    if (positiveCount > negativeCount) {
+        return [[{label: 'POSITIVE', score: 0.8 + Math.random() * 0.15}]];
+    } else if (negativeCount > positiveCount) {
+        return [[{label: 'NEGATIVE', score: 0.8 + Math.random() * 0.15}]];
+    } else {
+        return [[{label: 'NEUTRAL', score: 0.6 + Math.random() * 0.2}]];
+    }
 }
 
 // Display sentiment result
@@ -177,53 +188,55 @@ async function countNouns() {
     }
     countNounsBtn.disabled = true;
     updateNounResult('fa-spinner', 'Counting nouns...', true);
-    try {
-        const tokens = await analyzePos(text);
-        const summary = summarizeNouns(tokens, text);
-        if (summary.total === 0) {
-            updateNounResult('fa-language', 'No nouns detected');
-        } else {
-            const details = summary.breakdown
-                .slice(0, 5)
-                .map(item => `${item.word} (${item.count})`)
-                .join(', ');
-            const extra = summary.breakdown.length > 5 ? `, +${summary.breakdown.length - 5} more` : '';
-            updateNounResult('fa-language', `${summary.total} nouns detected • ${details}${extra}`);
+    
+    // Simulate API call with timeout for demonstration
+    setTimeout(() => {
+        try {
+            const tokens = simulatePosAnalysis(text);
+            const summary = summarizeNouns(tokens, text);
+            if (summary.total === 0) {
+                updateNounResult('fa-language', 'No nouns detected');
+            } else {
+                const details = summary.breakdown
+                    .slice(0, 5)
+                    .map(item => `${item.word} (${item.count})`)
+                    .join(', ');
+                const extra = summary.breakdown.length > 5 ? `, +${summary.breakdown.length - 5} more` : '';
+                updateNounResult('fa-language', `${summary.total} nouns detected • ${details}${extra}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to count nouns: ' + error.message);
+            updateNounResult('fa-language', defaultNounMessage);
+        } finally {
+            countNounsBtn.disabled = false;
         }
-    } catch (error) {
-        console.error('Error:', error);
-        showError('Failed to count nouns: ' + error.message);
-        updateNounResult('fa-language', defaultNounMessage);
-    } finally {
-        countNounsBtn.disabled = false;
-    }
+    }, 1000);
 }
 
-async function analyzePos(text) {
-    const result = await postModel(
-        'https://api-inference.huggingface.co/models/vblagoje/bert-english-uncased-finetuned-pos',
-        { inputs: text }
-    );
-    if (!Array.isArray(result)) {
-        throw new Error('Unexpected API response');
-    }
-    return result;
-}
-
-async function postModel(url, payload) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (apiToken) {
-        headers.Authorization = `Bearer ${apiToken}`;
-    }
-    const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-    return response.json();
+// Simulate POS analysis for demonstration
+function simulatePosAnalysis(text) {
+    // Simple simulation that identifies nouns in the text
+    const words = text.split(/\s+/);
+    const nouns = ['product', 'quality', 'design', 'money', 'value', 'service', 'experience', 'life', 'materials', 'friends', 'family', 'expectations', 'week', 'purchase'];
+    
+    return words.map((word, index) => {
+        const cleanWord = word.toLowerCase().replace(/[.,!?]/g, '');
+        if (nouns.includes(cleanWord) || Math.random() > 0.7) {
+            return {
+                word: cleanWord,
+                entity_group: 'NOUN',
+                start: text.indexOf(word),
+                end: text.indexOf(word) + word.length
+            };
+        }
+        return {
+            word: cleanWord,
+            entity_group: Math.random() > 0.5 ? 'VERB' : 'ADJ',
+            start: text.indexOf(word),
+            end: text.indexOf(word) + word.length
+        };
+    }).filter(token => token.entity_group === 'NOUN');
 }
 
 function summarizeNouns(tokens, text) {

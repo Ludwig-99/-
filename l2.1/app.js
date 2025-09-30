@@ -123,8 +123,8 @@ async function callSentimentApi(text, token) {
     disableButtons(true);
     
     try {
-        // Заменена модель на более стабильную distilbert-base-uncased-finetuned-sst-2-english
-        const response = await fetch('https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english', {
+        // Заменена модель на публичную без требований лицензии - nlptown/bert-base-multilingual-uncased-sentiment
+        const response = await fetch('https://api-inference.huggingface.co/models/nlptown/bert-base-multilingual-uncased-sentiment', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -135,6 +135,10 @@ async function callSentimentApi(text, token) {
         
         if (response.status === 401) {
             throw new Error('Invalid API token. Please check your Hugging Face token and make sure it starts with "hf_".');
+        }
+        
+        if (response.status === 403) {
+            throw new Error('Access forbidden. Model may require license agreement.');
         }
         
         if (response.status === 402) {
@@ -187,10 +191,11 @@ function updateSentimentResult(data) {
         const maxLabel = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
         confidence = (scores[maxLabel] * 100).toFixed(1);
         
-        if (maxLabel === 'positive' || maxLabel === 'POSITIVE' || maxLabel === 'LABEL_1') {
+        // Обработка для модели nlptown (рейтинги 1-5 звезд)
+        if (maxLabel.includes('5') || maxLabel.includes('4') || maxLabel.toLowerCase().includes('positive')) {
             sentiment = 'Positive';
             icon = '👍';
-        } else if (maxLabel === 'negative' || maxLabel === 'NEGATIVE' || maxLabel === 'LABEL_0') {
+        } else if (maxLabel.includes('1') || maxLabel.includes('2') || maxLabel.toLowerCase().includes('negative')) {
             sentiment = 'Negative';
             icon = '👎';
         } else {

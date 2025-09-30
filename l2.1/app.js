@@ -123,6 +123,10 @@ async function callSentimentApi(text, token) {
             body: JSON.stringify({ inputs: text })
         });
         
+        if (response.status === 401) {
+            throw new Error('Invalid API token. Please check your Hugging Face token.');
+        }
+        
         if (response.status === 402) {
             throw new Error('API token required for this model');
         }

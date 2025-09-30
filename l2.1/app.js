@@ -62,7 +62,17 @@ async function analyzeSentiment() {
         return;
     }
     
+    // Проверка валидности токена перед запросом
+    if (!isValidTokenFormat(token)) {
+        showError('Invalid token format. Token should start with "hf_"');
+        return;
+    }
+    
     await callSentimentApi(currentReview.text, token);
+}
+
+function isValidTokenFormat(token) {
+    return token.startsWith('hf_');
 }
 
 function countNouns() {
@@ -124,7 +134,7 @@ async function callSentimentApi(text, token) {
         });
         
         if (response.status === 401) {
-            throw new Error('Invalid API token. Please check your Hugging Face token.');
+            throw new Error('Invalid API token. Please check your Hugging Face token and make sure it starts with "hf_".');
         }
         
         if (response.status === 402) {

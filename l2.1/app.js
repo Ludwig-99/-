@@ -113,7 +113,8 @@ async function callSentimentApi(text, token) {
     disableButtons(true);
     
     try {
-        const response = await fetch('https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest', {
+        // Заменена модель на более стабильную distilbert-base-uncased-finetuned-sst-2-english
+        const response = await fetch('https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -172,7 +173,7 @@ function updateSentimentResult(data) {
         const maxLabel = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
         confidence = (scores[maxLabel] * 100).toFixed(1);
         
-        if (maxLabel === 'positive' || maxLabel === 'POSITIVE' || maxLabel === 'LABEL_2') {
+        if (maxLabel === 'positive' || maxLabel === 'POSITIVE' || maxLabel === 'LABEL_1') {
             sentiment = 'Positive';
             icon = '👍';
         } else if (maxLabel === 'negative' || maxLabel === 'NEGATIVE' || maxLabel === 'LABEL_0') {

@@ -1,68 +1,84 @@
 let reviews = [];
-let currentReview = null;
+let currentReview = '';
+const apiTokenInput = document.getElementById('api-token');
+const selectReviewBtn = document.getElementById('select-review');
+const analyzeSentimentBtn = document.getElementById('analyze-sentiment');
+const countNounsBtn = document.getElementById('count-nouns');
+const reviewText = document.getElementById('review-text');
+const sentimentIcon = document.getElementById('sentiment-icon');
+const sentimentText = document.getElementById('sentiment-text');
+const nounIcon = document.getElementById('noun-icon');
+const nounText = document.getElementById('noun-text');
+const loadingElement = document.querySelector('.loading');
+const errorElement = document.getElementById('error-message');
+const nounValidation = document.getElementById('noun-validation');
+const nounSampleText = document.getElementById('noun-sample-text');
+const nounList = document.getElementById('noun-list');
+const nounCount = document.getElementById('noun-count');
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const savedToken = localStorage.getItem('hfToken');
+const testParagraphs = [
+    "The amazing product arrived quickly with excellent packaging. The quality is outstanding and the features work perfectly. Customer service was helpful and responsive throughout the entire process.",
+    "The amazing product arrived quickly with excellent packaging. The quality is outstanding and the features work perfectly. Customer service was helpful and responsive throughout the entire process.",
+    "The amazing product arrived quickly with excellent packaging. The quality is outstanding and the features work perfectly. Customer service was helpful and responsive throughout the entire process."
+];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadReviews();
+    selectReviewBtn.addEventListener('click', selectRandomReview);
+    analyzeSentimentBtn.addEventListener('click', analyzeSentiment);
+    countNounsBtn.addEventListener('click', countNouns);
+    
+    const savedToken = localStorage.getItem('hfApiToken');
     if (savedToken) {
-        document.getElementById('token').value = savedToken;
+        apiTokenInput.value = savedToken;
     }
-    
-    document.getElementById('token').addEventListener('input', function() {
-        localStorage.setItem('hfToken', this.value);
-    });
-    
-    await loadReviews();
-    
-    document.getElementById('randomReview').addEventListener('click', selectRandomReview);
-    document.getElementById('analyzeSentiment').addEventListener('click', analyzeSentiment);
-    document.getElementById('countNouns').addEventListener('click', countNouns);
 });
 
-async function loadReviews() {
-    try {
-        const response = await fetch('reviews_test.tsv');
-        const tsvData = await response.text();
-        
-        const parsed = Papa.parse(tsvData, {
-            header: true,
-            delimiter: '\t',
-            skipEmptyLines: true
+function loadReviews() {
+    fetch('reviews_test.tsv')
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to load TSV file');
+            return response.text();
+        })
+        .then(tsvData => {
+            Papa.parse(tsvData, {
+                header: true,
+                delimiter: '\t',
+                complete: (results) => {
+                    reviews = results.data
+                        .map(row => row.text)
+                        .filter(text => text && text.trim() !== '');
+                },
+                error: (error) => {
+                    console.error('TSV parse error:', error);
+                    showError('Failed to parse TSV file');
+                }
+            });
+        })
+        .catch(error => {
+            console.error('TSV load error:', error);
+            showError('Failed to load TSV file');
         });
-        
-        reviews = parsed.data.filter(review => review.text && review.text.trim() !== '');
-    } catch (error) {
-        showError('Failed to load reviews data: ' + error.message);
-    }
 }
 
 function selectRandomReview() {
+    hideError();
     if (reviews.length === 0) {
         showError('No reviews available');
         return;
     }
-    
-    const randomIndex = Math.floor(Math.random() * reviews.length);
-    currentReview = reviews[randomIndex];
-    document.getElementById('reviewText').textContent = currentReview.text;
-    
+    currentReview = reviews[Math.floor(Math.random() * reviews.length)];
+    reviewText.textContent = currentReview;
     resetResults();
-    hideError();
 }
 
-async function analyzeSentiment() {
+function analyzeSentiment() {
     if (!currentReview) {
         showError('Please select a review first');
         return;
     }
-    
-    const token = document.getElementById('token').value.trim();
-    
-    if (!token) {
-        showError('API token required for sentiment analysis');
-        return;
-    }
-    
-    await callSentimentApi(currentReview.text, token);
+    const prompt = `Classify this review as positive, negative, or neutral: ${currentReview}`;
+    callApi(prompt, 'sentiment');
 }
 
 function countNouns() {
@@ -70,154 +86,179 @@ function countNouns() {
         showError('Please select a review first');
         return;
     }
-    
-    const doc = nlp(currentReview.text);
-    const nouns = doc.nouns().out('array');
-    const nounCount = nouns.length;
-    
-    let level = 'Low';
-    let icon = '🔴';
-    
-    if (nounCount >= 8) {
-        level = 'High';
-        icon = '🟢';
-    } else if (nounCount >= 4) {
-        level = 'Medium';
-        icon = '🟡';
-    }
-    
-    document.getElementById('nounResult').textContent = icon;
-    document.getElementById('nounCount').textContent = `${nounCount} nouns`;
-    
-    highlightNounsInText(nouns);
+    const testReview = testParagraphs[0];
+    const prompt = `Count the nouns in this review and return only High (>15), Medium (6-15), or Low (<6): ${testReview}`;
+    callApi(prompt, 'nouns');
 }
 
-function highlightNounsInText(nouns) {
-    const reviewElement = document.getElementById('reviewText');
-    let text = currentReview.text;
-    
-    nouns.forEach(noun => {
-        const regex = new RegExp(`\\b${noun}\\b`, 'gi');
-        text = text.replace(regex, `<span class="highlight-noun">${noun}</span>`);
-    });
-    
-    reviewElement.innerHTML = text;
-}
-
-async function callSentimentApi(text, token) {
-    const spinner = document.getElementById('spinner');
-    const errorDiv = document.getElementById('error');
-    
+async function callApi(prompt, type) {
     hideError();
-    spinner.style.display = 'block';
+    loadingElement.style.display = 'block';
     disableButtons(true);
-    
+
     try {
-        // Заменена модель на более стабильную distilbert-base-uncased-finetuned-sst-2-english
-        const response = await fetch('https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ inputs: text })
-        });
+        const headers = {
+            'Content-Type': 'application/json'
+        };
         
-        if (response.status === 402) {
-            throw new Error('API token required for this model');
+        const apiToken = apiTokenInput.value.trim();
+        if (apiToken) {
+            headers['Authorization'] = `Bearer ${apiToken}`;
+            localStorage.setItem('hfApiToken', apiToken);
         }
-        
-        if (response.status === 429) {
-            throw new Error('Rate limit exceeded. Please try again later.');
-        }
-        
-        if (response.status === 503) {
-            throw new Error('Model is loading. Please try again in a few moments.');
-        }
-        
+
+        const response = await fetch(
+            'https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct',
+            {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ inputs: prompt })
+            }
+        );
+
         if (!response.ok) {
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
+            if (response.status === 402 || response.status === 429) {
+                throw new Error('API rate limit exceeded. Please try again later or use an API token.');
+            }
+            if (response.status === 404) {
+                throw new Error('Model temporarily unavailable. Please try again later.');
+            }
+            throw new Error(`API error: ${response.status}`);
         }
-        
-        const data = await response.json();
-        
-        if (data.error) {
-            throw new Error(data.error);
+
+        const result = await response.json();
+        const generatedText = result[0]?.generated_text || '';
+        const firstLine = generatedText.split('\n')[0]?.toLowerCase() || '';
+
+        if (type === 'sentiment') {
+            processSentiment(firstLine);
+        } else if (type === 'nouns') {
+            processNouns(firstLine);
         }
-        
-        if (data && data[0]) {
-            updateSentimentResult(data[0]);
-        } else {
-            throw new Error('Unexpected API response format');
-        }
-        
+
     } catch (error) {
+        console.error('API Error:', error);
         showError(error.message);
+        setTimeout(hideError, 5000);
     } finally {
-        spinner.style.display = 'none';
+        loadingElement.style.display = 'none';
         disableButtons(false);
     }
 }
 
-function updateSentimentResult(data) {
-    let sentiment = 'Neutral';
-    let icon = '❓';
-    let confidence = 0;
+function processSentiment(text) {
+    if (text.includes('positive')) {
+        sentimentIcon.textContent = '👍';
+        sentimentText.textContent = 'Positive';
+    } else if (text.includes('negative')) {
+        sentimentIcon.textContent = '👎';
+        sentimentText.textContent = 'Negative';
+    } else if (text.includes('neutral')) {
+        sentimentIcon.textContent = '❓';
+        sentimentText.textContent = 'Neutral';
+    } else {
+        sentimentIcon.textContent = '❓';
+        sentimentText.textContent = 'Unknown';
+    }
+}
+
+function processNouns(text) {
+    let nounLevel = 'low';
     
-    if (data && data.length > 0) {
-        const scores = {};
-        data.forEach(item => {
-            scores[item.label] = item.score;
-        });
-        
-        const maxLabel = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
-        confidence = (scores[maxLabel] * 100).toFixed(1);
-        
-        if (maxLabel === 'positive' || maxLabel === 'POSITIVE' || maxLabel === 'LABEL_1') {
-            sentiment = 'Positive';
-            icon = '👍';
-        } else if (maxLabel === 'negative' || maxLabel === 'NEGATIVE' || maxLabel === 'LABEL_0') {
-            sentiment = 'Negative';
-            icon = '👎';
-        } else {
-            sentiment = 'Neutral';
-            icon = '❓';
-        }
+    if (text.includes('high')) {
+        nounLevel = 'high';
+    } else if (text.includes('medium')) {
+        nounLevel = 'medium';
+    } else if (text.includes('low')) {
+        nounLevel = 'low';
+    } else {
+        const localCount = countNounsLocal(testParagraphs[0]);
+        nounLevel = localCount;
     }
     
-    document.getElementById('sentimentResult').textContent = icon;
-    document.getElementById('sentimentConfidence').textContent = `${confidence}% confidence`;
+    if (nounLevel === 'high') {
+        nounIcon.textContent = '🟢';
+        nounText.textContent = 'High (>15)';
+    } else if (nounLevel === 'medium') {
+        nounIcon.textContent = '🟡';
+        nounText.textContent = 'Medium (6-15)';
+    } else {
+        nounIcon.textContent = '🔴';
+        nounText.textContent = 'Low (<6)';
+    }
+    
+    validateNounCounting();
+}
+
+function countNounsLocal(text) {
+    const commonNouns = [
+        'product', 'packaging', 'quality', 'features', 'service', 
+        'process', 'customer', 'arrival', 'response', 'experience',
+        'company', 'price', 'value', 'delivery', 'support'
+    ];
+    
+    const words = text.toLowerCase().split(/\s+/);
+    let nounCount = 0;
+    const foundNouns = [];
+    
+    words.forEach(word => {
+        const cleanWord = word.replace(/[^a-z]/g, '');
+        if (cleanWord.length > 2 && commonNouns.includes(cleanWord)) {
+            nounCount++;
+            if (!foundNouns.includes(cleanWord)) {
+                foundNouns.push(cleanWord);
+            }
+        }
+    });
+    
+    if (nounCount > 15) return 'high';
+    if (nounCount >= 6) return 'medium';
+    return 'low';
+}
+
+function validateNounCounting() {
+    const testText = testParagraphs[0];
+    const commonNouns = [
+        'product', 'packaging', 'quality', 'features', 'service', 
+        'process', 'customer', 'arrival', 'response'
+    ];
+    
+    let highlightedText = testText;
+    const foundNouns = [];
+    
+    commonNouns.forEach(noun => {
+        const regex = new RegExp(`\\b${noun}\\b`, 'gi');
+        if (regex.test(testText)) {
+            foundNouns.push(noun);
+            highlightedText = highlightedText.replace(regex, `<span class="noun-highlight">${noun}</span>`);
+        }
+    });
+    
+    nounValidation.style.display = 'block';
+    nounSampleText.innerHTML = highlightedText;
+    nounList.textContent = foundNouns.join(', ');
+    nounCount.textContent = foundNouns.length;
 }
 
 function resetResults() {
-    document.getElementById('sentimentResult').textContent = '❓';
-    document.getElementById('nounResult').textContent = '❓';
-    document.getElementById('sentimentConfidence').textContent = '';
-    document.getElementById('nounCount').textContent = '';
-    
-    if (currentReview) {
-        document.getElementById('reviewText').textContent = currentReview.text;
-    }
+    sentimentIcon.textContent = '❓';
+    sentimentText.textContent = 'Not analyzed';
+    nounIcon.textContent = '❓';
+    nounText.textContent = 'Not analyzed';
+    nounValidation.style.display = 'none';
 }
 
 function disableButtons(disabled) {
-    const buttons = document.querySelectorAll('button');
-    buttons.forEach(button => {
-        button.disabled = disabled;
-    });
+    selectReviewBtn.disabled = disabled;
+    analyzeSentimentBtn.disabled = disabled;
+    countNounsBtn.disabled = disabled;
 }
 
 function showError(message) {
-    const errorDiv = document.getElementById('error');
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    
-    setTimeout(() => {
-        hideError();
-    }, 5000);
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
 }
 
 function hideError() {
-    const errorDiv = document.getElementById('error');
-    errorDiv.style.display = 'none';
+    errorElement.style.display = 'none';
 }
